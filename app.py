@@ -238,6 +238,17 @@ def process_video(job_id: str, youtube_url: str):
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+@app.after_request
+def add_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+
+@app.route("/health")
+def health():
+    return jsonify(ok=True)
+
+
 @app.route("/")
 def index():
     return render_template("index.html")

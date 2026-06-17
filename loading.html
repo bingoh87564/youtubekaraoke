@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Karaoke Maker — Starting…</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(145deg, #2d1b69 0%, #6c47b8 55%, #a855f7 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 24px;
+      padding: 52px 44px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      color: #fff;
+    }
+
+    .mic {
+      font-size: 76px;
+      display: block;
+      margin-bottom: 12px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0);    }
+      50%       { transform: translateY(-10px); }
+    }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 32px;
+    }
+
+    .spinner {
+      width: 52px;
+      height: 52px;
+      border: 5px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.85s linear infinite;
+      margin: 0 auto 22px;
+      transition: border-top-color 0.4s;
+    }
+
+    .spinner.done { border-top-color: #4caf50; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #status {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      min-height: 28px;
+    }
+
+    .note {
+      font-size: 13px;
+      opacity: 0.65;
+      margin-top: 14px;
+      line-height: 1.5;
+    }
+
+    #manual-link {
+      margin-top: 24px;
+      display: none;
+    }
+
+    #manual-link a {
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      background: rgba(255,255,255,0.2);
+      padding: 10px 22px;
+      border-radius: 10px;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    #manual-link a:hover { background: rgba(255,255,255,0.3); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="mic">&#127908;</span>
+    <h1>Karaoke Maker</h1>
+
+    <div class="spinner" id="spinner"></div>
+    <p id="status">Starting up&hellip;</p>
+    <p class="note">This takes just a few seconds. Please wait.</p>
+
+    <div id="manual-link">
+      <p style="margin-bottom:12px; font-size:14px; opacity:.8">
+        Taking longer than expected?
+      </p>
+      <a href="http://localhost:5000">Open Karaoke Maker &rarr;</a>
+    </div>
+  </div>
+
+  <script>
+    var tries   = 0;
+    var maxWait = 40; // give up after ~20 s
+
+    function tryConnect() {
+      tries++;
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'http://localhost:5000/health', true);
+      xhr.timeout = 1500;
+
+      xhr.onload = function () {
+        document.getElementById('status').textContent  = 'Ready! Opening…';
+        document.getElementById('spinner').className   = 'spinner done';
+        setTimeout(function () {
+          window.location.href = 'http://localhost:5000';
+        }, 350);
+      };
+
+      xhr.onerror = xhr.ontimeout = function () {
+        if (tries < maxWait) {
+          if (tries === 10) document.getElementById('status').textContent = 'Almost ready…';
+          setTimeout(tryConnect, 500);
+        } else {
+          document.getElementById('status').textContent = 'Server is taking longer than usual.';
+          document.getElementById('manual-link').style.display = 'block';
+        }
+      };
+
+      xhr.send();
+    }
+
+    tryConnect();
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-title Karaoke Maker — First-Time Setup
+title Karaoke Maker — Setup
 color 0A
 cd /d "%~dp0"
 
@@ -9,120 +9,131 @@ echo  ============================================================
 echo    Karaoke Maker — First-Time Setup
 echo  ============================================================
 echo.
-echo  Welcome! This window will set up everything you need.
-echo  It only needs to run ONCE and may take 10-20 minutes
-echo  because it downloads the AI model and tools.
+echo  This window sets up everything automatically.
+echo  Please leave it open until you see "All done!"
 echo.
-echo  Please DO NOT close this window until you see "Setup done!"
+echo  It may take 10-20 minutes on a slow internet connection.
 echo.
 pause
 
-REM ── Check Python ──────────────────────────────────────────────────────
+REM ── Step 1: Check Python ──────────────────────────────────────────────
 echo.
-echo  [Step 1 of 5]  Checking Python...
+echo  [1 of 7]  Checking for Python...
 python --version >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo  ERROR: Python is not installed on this computer.
+    echo  Python is not installed.
     echo.
-    echo  Please follow these steps:
-    echo    1. Open your web browser and go to: https://www.python.org/downloads/
-    echo    2. Click the big yellow "Download Python" button.
+    echo  Please do the following:
+    echo    1. Go to:  https://www.python.org/downloads/
+    echo    2. Click the big Download button.
     echo    3. Run the downloaded file.
-    echo    4. IMPORTANT: Check the box "Add Python to PATH" before clicking Install.
-    echo    5. After Python installs, come back and double-click setup.bat again.
+    echo    4. On the FIRST screen, tick "Add Python to PATH".
+    echo    5. Click Install Now and wait for it to finish.
+    echo    6. Then double-click setup.bat again.
     echo.
     pause
     exit /b 1
 )
-python --version
-echo  Python found! Great.
+for /f "tokens=*" %%v in ('python --version 2^>^&1') do echo  Found: %%v
 
-REM ── Create virtual environment ────────────────────────────────────────
+REM ── Step 2: Create virtual environment ───────────────────────────────
 echo.
-echo  [Step 2 of 5]  Creating an isolated environment for the app...
+echo  [2 of 7]  Creating app environment...
 if exist venv (
-    echo  Environment already exists, skipping creation.
+    echo  Already exists, continuing.
 ) else (
     python -m venv venv
     if errorlevel 1 (
-        echo.
-        echo  ERROR: Could not create the environment.
-        echo  Please make sure Python is installed correctly and try again.
+        echo  ERROR: Could not create environment. Check Python install and retry.
         pause
         exit /b 1
     )
 )
-echo  Done.
-
-REM ── Activate venv ─────────────────────────────────────────────────────
 call venv\Scripts\activate.bat
 
-REM ── Upgrade pip ───────────────────────────────────────────────────────
+REM ── Step 3: Upgrade pip ───────────────────────────────────────────────
 echo.
-echo  [Step 3 of 5]  Updating package manager...
+echo  [3 of 7]  Updating installer tools...
 python -m pip install --upgrade pip --quiet
 echo  Done.
 
-REM ── Install PyTorch (CPU) first — it is large ─────────────────────────
+REM ── Step 4: Install PyTorch (CPU) ─────────────────────────────────────
 echo.
-echo  [Step 4 of 5]  Installing AI components (large download — please wait)...
-echo  This step can take 5-15 minutes depending on your internet speed.
-echo.
+echo  [4 of 7]  Installing AI engine  (large download — please wait)...
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 if errorlevel 1 (
     echo.
-    echo  ERROR: Could not download the AI components.
-    echo  Please check your internet connection and try again.
+    echo  ERROR: Could not download AI components.
+    echo  Check your internet connection and run setup again.
     pause
     exit /b 1
 )
 echo.
-echo  AI components installed!
 
-REM ── Install remaining requirements ────────────────────────────────────
+REM ── Remove torchcodec — its DLL does not load reliably on Windows ──────
+echo  Removing incompatible audio component (torchcodec)...
+pip uninstall torchcodec -y >nul 2>&1
+echo  Done.
+
+REM ── Step 5: Install remaining packages ───────────────────────────────
 echo.
-echo  [Step 5 of 5]  Installing remaining components...
-pip install -r requirements.txt
+echo  [5 of 7]  Installing remaining components...
+pip install flask yt-dlp "demucs>=4.0.1" imageio-ffmpeg "soundfile>=0.12.0"
 if errorlevel 1 (
     echo.
-    echo  ERROR: Could not install all components.
-    echo  Please check your internet connection and try again.
+    echo  ERROR: Could not install components. Check internet and retry.
     pause
     exit /b 1
 )
+echo  Done.
 
-REM ── Download ffmpeg + ffprobe ─────────────────────────────────────────
+REM ── Step 6: Download ffmpeg + ffprobe ─────────────────────────────────
 echo.
-echo  Downloading ffmpeg audio tools (required for audio processing)...
-echo  This may take a minute...
-echo.
-python -c "import urllib.request, zipfile, shutil, pathlib; p=pathlib.Path('ffmpeg'); p.mkdir(exist_ok=True); urllib.request.urlretrieve('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip','ff.zip'); z=zipfile.ZipFile('ff.zip'); [z.extract(m,'fftmp') for m in z.namelist() if m.endswith('.exe')]; [shutil.copy(str(e),str(p/e.name)) for e in pathlib.Path('fftmp').rglob('*.exe')]; shutil.rmtree('fftmp'); pathlib.Path('ff.zip').unlink(); print('ffmpeg ready!')"
-if errorlevel 1 (
-    echo  WARNING: Could not download ffmpeg automatically.
-    echo  The app may not work. Check your internet connection and run setup again.
+echo  [6 of 7]  Downloading audio tools (ffmpeg)...
+if exist ffmpeg\ffmpeg.exe (
+    echo  Already downloaded, skipping.
+) else (
+    python -c "import urllib.request,zipfile,shutil,pathlib; p=pathlib.Path('ffmpeg'); p.mkdir(exist_ok=True); print('  Downloading...'); urllib.request.urlretrieve('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip','ff.zip'); print('  Extracting...'); z=zipfile.ZipFile('ff.zip'); [z.extract(m,'fftmp') for m in z.namelist() if m.endswith('.exe')]; [shutil.copy(str(e),str(p/e.name)) for e in pathlib.Path('fftmp').rglob('*.exe')]; shutil.rmtree('fftmp'); pathlib.Path('ff.zip').unlink(); print('  Done.')"
+    if errorlevel 1 (
+        echo  WARNING: Could not download ffmpeg. The app may not work correctly.
+        echo  Please check your internet connection and run setup again.
+    )
 )
 
-REM ── Pre-download the Demucs AI model ─────────────────────────────────
+REM ── Step 7: Create desktop shortcut ──────────────────────────────────
 echo.
-echo  Pre-downloading the AI vocal-removal model (~80 MB)...
-echo  This avoids a delay the first time you use the app.
-echo.
-python -c "import demucs; print('Checking model...')" 2>nul
-python -m demucs --help >nul 2>&1
-echo.
-echo  Model ready!
+echo  [7 of 7]  Creating your desktop shortcut...
+set "VBS=%~dp0KaraokeMaker.vbs"
+set "DESK=%USERPROFILE%\Desktop"
+powershell -NoProfile -Command ^
+  "$s=(New-Object -COM WScript.Shell).CreateShortcut('%DESK%\Karaoke Maker.lnk');" ^
+  "$s.TargetPath='wscript.exe';" ^
+  "$s.Arguments='\"%VBS%\"';" ^
+  "$s.Description='Open Karaoke Maker';" ^
+  "$s.WorkingDirectory='%~dp0';" ^
+  "$s.Save()"
+if exist "%DESK%\Karaoke Maker.lnk" (
+    echo  Shortcut created on your Desktop!
+) else (
+    echo  Could not create shortcut automatically.
+    echo  You can manually right-click KaraokeMaker.vbs and choose "Send to Desktop".
+)
 
-REM ── Done! ─────────────────────────────────────────────────────────────
+REM ── All done! ─────────────────────────────────────────────────────────
 echo.
 echo  ============================================================
-echo    Setup is complete!
+echo    All done!
 echo  ============================================================
 echo.
-echo  You're all set! From now on, just double-click:
+echo  A "Karaoke Maker" shortcut has been placed on your Desktop.
 echo.
-echo     launch.bat
+echo  HOW TO USE:
+echo    1. Double-click "Karaoke Maker" on your Desktop.
+echo    2. The app will open in your browser automatically.
+echo    3. Bookmark  http://localhost:5000  in your browser.
+echo    4. Next time: double-click the Desktop icon, then use the bookmark.
 echo.
-echo  ...to open Karaoke Maker in your browser.
+echo  You never need to touch this folder again!
 echo.
 pause
