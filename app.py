@@ -135,11 +135,11 @@ def process_video(job_id: str, youtube_url: str):
         )
         anim.start()
 
+        run_demucs = Path(__file__).parent / "run_demucs.py"
         result = subprocess.run(
             [
                 sys.executable,
-                "-m",
-                "demucs",
+                str(run_demucs),
                 "--two-stems",
                 "vocals",
                 "--out",
