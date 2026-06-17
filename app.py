@@ -21,11 +21,29 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_ffmpeg_path():
+    # 1. Local ffmpeg/ folder downloaded during setup (most reliable)
+    local = Path(__file__).parent / "ffmpeg" / "ffmpeg.exe"
+    if local.exists():
+        return str(local)
+
+    # 2. imageio-ffmpeg bundled binary
     try:
         import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
+        path = imageio_ffmpeg.get_ffmpeg_exe()
+        if path and Path(path).exists():
+            return path
     except Exception:
-        return "ffmpeg"
+        pass
+
+    # 3. System ffmpeg in PATH
+    system = shutil.which("ffmpeg")
+    if system:
+        return system
+
+    raise RuntimeError(
+        "FFmpeg was not found. Please run setup.bat again, or follow the "
+        "troubleshooting steps in the README."
+    )
 
 
 def sanitize_filename(name: str) -> str:

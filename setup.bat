@@ -92,6 +92,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM ── Download ffmpeg + ffprobe ─────────────────────────────────────────
+echo.
+echo  Downloading ffmpeg audio tools (required for audio processing)...
+echo  This may take a minute...
+echo.
+python -c "import urllib.request, zipfile, shutil, pathlib; p=pathlib.Path('ffmpeg'); p.mkdir(exist_ok=True); urllib.request.urlretrieve('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip','ff.zip'); z=zipfile.ZipFile('ff.zip'); [z.extract(m,'fftmp') for m in z.namelist() if m.endswith('.exe')]; [shutil.copy(str(e),str(p/e.name)) for e in pathlib.Path('fftmp').rglob('*.exe')]; shutil.rmtree('fftmp'); pathlib.Path('ff.zip').unlink(); print('ffmpeg ready!')"
+if errorlevel 1 (
+    echo  WARNING: Could not download ffmpeg automatically.
+    echo  The app may not work. Check your internet connection and run setup again.
+)
+
 REM ── Pre-download the Demucs AI model ─────────────────────────────────
 echo.
 echo  Pre-downloading the AI vocal-removal model (~80 MB)...
