@@ -82,7 +82,7 @@
     <p class="note">This takes just a few seconds &mdash; please wait.</p>
     <div id="manual-link">
       <p style="margin-bottom:12px; font-size:14px; opacity:.8">Taking a while? Click below:</p>
-      <a href="http://localhost:5000">Open Karaoke Maker &rarr;</a>
+      <a href="http://127.0.0.1:5000">Open Karaoke Maker &rarr;</a>
     </div>
   </div>
 
@@ -95,12 +95,12 @@
 
       // mode:'no-cors' lets file:// pages reach localhost without CORS errors.
       // The response is opaque but the promise resolves if the server is up.
-      fetch('http://localhost:5000/', { mode: 'no-cors' })
+      fetch('http://127.0.0.1:5000/', { mode: 'no-cors' })
         .then(function () {
           document.getElementById('status').textContent  = 'Ready! Opening…';
           document.getElementById('spinner').className   = 'spinner done';
           setTimeout(function () {
-            window.location.href = 'http://localhost:5000';
+            window.location.href = 'http://127.0.0.1:5000';
           }, 350);
         })
         .catch(function () {

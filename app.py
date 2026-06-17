@@ -332,7 +332,7 @@ if __name__ == "__main__":
     print()
     print("=" * 52)
     print("  Karaoke Maker is running!")
-    print("  Open your browser to: http://localhost:5000")
+    print("  Open your browser to: http://127.0.0.1:5000")
     print("=" * 52)
     print()
     app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)

@@ -29,7 +29,7 @@ echo  To stop the app, close this window.
 echo.
 
 REM ── Open Chrome (or fallback to default browser) after 3 s ────────────
-start "" cmd /c "timeout /t 3 /nobreak >nul && (start \"\" \"C:\Program Files\Google\Chrome\Application\chrome.exe\" --new-window http://localhost:5000 2>nul || start \"\" \"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe\" --new-window http://localhost:5000 2>nul || start http://localhost:5000)"
+start "" cmd /c "timeout /t 3 /nobreak >nul && (start \"\" \"C:\Program Files\Google\Chrome\Application\chrome.exe\" --new-window http://127.0.0.1:5000 2>nul || start \"\" \"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe\" --new-window http://127.0.0.1:5000 2>nul || start http://127.0.0.1:5000)"
 
 REM ── Start the Flask server (runs until window is closed) ───────────────
 python app.py
