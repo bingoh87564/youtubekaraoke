@@ -18,7 +18,7 @@
     }
 
     .card {
-      background: rgba(255, 255, 255, 0.14);
+      background: rgba(255,255,255,0.14);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255,255,255,0.25);
@@ -36,22 +36,15 @@
       margin-bottom: 12px;
       animation: bounce 2s ease-in-out infinite;
     }
-
     @keyframes bounce {
-      0%, 100% { transform: translateY(0);    }
+      0%, 100% { transform: translateY(0);     }
       50%       { transform: translateY(-10px); }
     }
 
-    h1 {
-      font-size: 34px;
-      font-weight: 800;
-      letter-spacing: -1px;
-      margin-bottom: 32px;
-    }
+    h1 { font-size: 34px; font-weight: 800; letter-spacing: -1px; margin-bottom: 32px; }
 
     .spinner {
-      width: 52px;
-      height: 52px;
+      width: 52px; height: 52px;
       border: 5px solid rgba(255,255,255,0.25);
       border-top-color: #fff;
       border-radius: 50%;
@@ -59,90 +52,68 @@
       margin: 0 auto 22px;
       transition: border-top-color 0.4s;
     }
-
-    .spinner.done { border-top-color: #4caf50; }
-
+    .spinner.done { border-top-color: #4caf50; animation: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    #status {
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 8px;
-      min-height: 28px;
-    }
+    #status { font-size: 18px; font-weight: 600; margin-bottom: 8px; min-height: 28px; }
 
-    .note {
-      font-size: 13px;
-      opacity: 0.65;
-      margin-top: 14px;
-      line-height: 1.5;
-    }
+    .note { font-size: 13px; opacity: 0.65; margin-top: 14px; line-height: 1.6; }
 
-    #manual-link {
-      margin-top: 24px;
-      display: none;
-    }
-
+    #manual-link { margin-top: 24px; display: none; }
     #manual-link a {
       color: #fff;
       font-weight: 700;
       font-size: 16px;
       background: rgba(255,255,255,0.2);
-      padding: 10px 22px;
+      padding: 12px 26px;
       border-radius: 10px;
       text-decoration: none;
       display: inline-block;
     }
-
-    #manual-link a:hover { background: rgba(255,255,255,0.3); }
+    #manual-link a:hover { background: rgba(255,255,255,0.32); }
   </style>
 </head>
 <body>
   <div class="card">
     <span class="mic">&#127908;</span>
     <h1>Karaoke Maker</h1>
-
     <div class="spinner" id="spinner"></div>
     <p id="status">Starting up&hellip;</p>
-    <p class="note">This takes just a few seconds. Please wait.</p>
-
+    <p class="note">This takes just a few seconds &mdash; please wait.</p>
     <div id="manual-link">
-      <p style="margin-bottom:12px; font-size:14px; opacity:.8">
-        Taking longer than expected?
-      </p>
+      <p style="margin-bottom:12px; font-size:14px; opacity:.8">Taking a while? Click below:</p>
       <a href="http://localhost:5000">Open Karaoke Maker &rarr;</a>
     </div>
   </div>
 
   <script>
     var tries   = 0;
-    var maxWait = 40; // give up after ~20 s
+    var maxTries = 60;   // ~30 seconds total
 
     function tryConnect() {
       tries++;
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', 'http://localhost:5000/health', true);
-      xhr.timeout = 1500;
 
-      xhr.onload = function () {
-        document.getElementById('status').textContent  = 'Ready! Opening…';
-        document.getElementById('spinner').className   = 'spinner done';
-        setTimeout(function () {
-          window.location.href = 'http://localhost:5000';
-        }, 350);
-      };
-
-      xhr.onerror = xhr.ontimeout = function () {
-        if (tries < maxWait) {
-          if (tries === 10) document.getElementById('status').textContent = 'Almost ready…';
-          setTimeout(tryConnect, 500);
-        } else {
-          document.getElementById('status').textContent = 'Server is taking longer than usual.';
-          document.getElementById('manual-link').style.display = 'block';
-        }
-      };
-
-      xhr.send();
+      // mode:'no-cors' lets file:// pages reach localhost without CORS errors.
+      // The response is opaque but the promise resolves if the server is up.
+      fetch('http://localhost:5000/', { mode: 'no-cors' })
+        .then(function () {
+          document.getElementById('status').textContent  = 'Ready! Opening…';
+          document.getElementById('spinner').className   = 'spinner done';
+          setTimeout(function () {
+            window.location.href = 'http://localhost:5000';
+          }, 350);
+        })
+        .catch(function () {
+          if (tries < maxTries) {
+            if (tries === 12) {
+              document.getElementById('status').textContent = 'Almost ready…';
+            }
+            setTimeout(tryConnect, 500);
+          } else {
+            document.getElementById('status').textContent = 'Taking longer than expected.';
+            document.getElementById('manual-link').style.display = 'block';
+          }
+        });
     }
 
     tryConnect();
