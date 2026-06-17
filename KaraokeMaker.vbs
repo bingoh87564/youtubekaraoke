@@ -3,7 +3,7 @@ Option Explicit
 Dim WShell, fso, scriptDir, http
 Set WShell = CreateObject("WScript.Shell")
 Set fso   = CreateObject("Scripting.FileSystemObject")
-scriptDir  = fso.GetParentFolderName(WScript.ScriptFullPath)
+scriptDir  = fso.GetParentFolderName(WScript.ScriptFullName)
 
 ' ── Make sure setup has been run ─────────────────────────────────────────
 Dim pythonExe
