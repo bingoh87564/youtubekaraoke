@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Karaoke Maker</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <div class="page">
+
+    <!-- Header -->
+    <header>
+      <div class="logo-wrap">
+        <span class="mic">&#127908;</span>
+      </div>
+      <h1>Karaoke Maker</h1>
+      <p class="tagline">Turn any YouTube song into a karaoke track — no vocals, no hassle!</p>
+    </header>
+
+    <!-- Main card -->
+    <main>
+
+      <!-- INPUT STATE -->
+      <section class="card" id="sec-input">
+        <h2>Paste a YouTube link below</h2>
+        <p class="hint">
+          Open YouTube, find a song, copy the link from the address bar,
+          and paste it here.
+        </p>
+        <div class="input-row">
+          <input
+            id="url-input"
+            type="text"
+            placeholder="https://www.youtube.com/watch?v=..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="go-btn" onclick="startProcessing()">
+            Make Karaoke Track!
+          </button>
+        </div>
+        <p class="fine-print">
+          Processing usually takes 3&ndash;10 minutes depending on the song length.
+          The app does all the work &mdash; you just wait!
+        </p>
+      </section>
+
+      <!-- PROGRESS STATE -->
+      <section class="card" id="sec-progress" hidden>
+        <div class="spinner-wrap">
+          <div class="spinner"></div>
+        </div>
+        <h2 id="prog-title">Working on it&hellip;</h2>
+        <p id="prog-msg">Getting started&hellip;</p>
+        <div class="bar-track">
+          <div class="bar-fill" id="bar-fill"></div>
+        </div>
+        <p id="bar-label" class="bar-label">0%</p>
+        <p class="fine-print keep-open">
+          &#128274; Please keep this window open while processing.
+        </p>
+        <button class="btn-ghost" onclick="resetApp()">&#8592; Start over</button>
+      </section>
+
+      <!-- SUCCESS STATE -->
+      <section class="card card-success" id="sec-success" hidden>
+        <div class="big-icon">&#9989;</div>
+        <h2>Your karaoke track is ready!</h2>
+        <div class="result-box">
+          <p class="result-label">File saved as:</p>
+          <p class="result-filename" id="res-filename"></p>
+          <p class="result-label" style="margin-top:10px">Saved to folder:</p>
+          <p class="result-folder" id="res-folder"></p>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="openFolder()">&#128193; Open Folder</button>
+          <button class="btn-ghost" onclick="resetApp()">Make Another</button>
+        </div>
+      </section>
+
+      <!-- ERROR STATE -->
+      <section class="card card-error" id="sec-error" hidden>
+        <div class="big-icon">&#9888;&#65039;</div>
+        <h2>Something went wrong</h2>
+        <p id="err-msg" class="err-text"></p>
+        <button class="btn-primary" onclick="resetApp()">Try Again</button>
+      </section>
+
+    </main>
+
+    <footer>
+      <p>Karaoke Maker &bull; Running locally on your computer &bull; Your files never leave your machine</p>
+    </footer>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
