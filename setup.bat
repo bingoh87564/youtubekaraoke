@@ -69,7 +69,7 @@ echo.
 echo  [Step 4 of 5]  Installing AI components (large download — please wait)...
 echo  This step can take 5-15 minutes depending on your internet speed.
 echo.
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install "torch==2.3.0" "torchaudio==2.3.0" --index-url https://download.pytorch.org/whl/cpu
 if errorlevel 1 (
     echo.
     echo  ERROR: Could not download the AI components.
