@@ -5,11 +5,13 @@ Set WShell = CreateObject("WScript.Shell")
 Set fso    = CreateObject("Scripting.FileSystemObject")
 scriptDir  = fso.GetParentFolderName(WScript.ScriptFullName)
 
-' ── Check setup ────────────────────────────────────────────────────────────
+' ── Find the right Python (embedded first, then venv) ─────────────────────
 Dim pythonExe
-pythonExe = scriptDir & "\venv\Scripts\python.exe"
-
-If Not fso.FileExists(pythonExe) Then
+If fso.FileExists(scriptDir & "\python\python.exe") Then
+    pythonExe = scriptDir & "\python\python.exe"          ' portable / no-install
+ElseIf fso.FileExists(scriptDir & "\venv\Scripts\python.exe") Then
+    pythonExe = scriptDir & "\venv\Scripts\python.exe"    ' old venv setup
+Else
     MsgBox "Karaoke Maker needs to be set up first." & vbCrLf & vbCrLf & _
            "Please double-click  setup.bat  in the Karaoke Maker folder, " & _
            "wait for it to finish, then try again.", _
@@ -19,19 +21,17 @@ End If
 
 ' ── Start server if not already running ────────────────────────────────────
 If Not IsServerUp() Then
-
-    ' Launch Flask in a hidden window via a small starter script
     Dim starter
     starter = scriptDir & "\server_start.bat"
     WShell.Run "cmd /c """ & starter & """", 0, False
 
-    ' Show a friendly popup while we wait (auto-closes in 30 s)
+    ' Show friendly popup while the server starts (auto-closes in 30 s)
     WShell.Popup "Karaoke Maker is starting up." & vbCrLf & vbCrLf & _
                  "Your browser will open automatically in a few seconds." & vbCrLf & _
-                 "(This message closes on its own — no need to click anything)", _
+                 "(This message closes on its own)", _
                  30, "Karaoke Maker", 64
 
-    ' Poll up to 60 seconds after the popup closes
+    ' Continue polling after popup closes
     Dim i
     For i = 1 To 60
         If IsServerUp() Then Exit For
@@ -39,17 +39,15 @@ If Not IsServerUp() Then
     Next
 End If
 
-' ── Open the app in the browser ────────────────────────────────────────────
+' ── Open the app ───────────────────────────────────────────────────────────
 If IsServerUp() Then
     WShell.Run "http://127.0.0.1:5000"
 Else
     MsgBox "Karaoke Maker could not start." & vbCrLf & vbCrLf & _
-           "Please try double-clicking the icon again." & vbCrLf & _
-           "If it keeps failing, run  setup.bat  once more.", _
+           "Please try again. If it keeps failing, run  setup.bat  once more.", _
            vbExclamation, "Karaoke Maker"
 End If
 
-' ── Helper: returns True if Flask is answering ─────────────────────────────
 Function IsServerUp()
     Dim h
     Set h = CreateObject("MSXML2.ServerXMLHTTP")

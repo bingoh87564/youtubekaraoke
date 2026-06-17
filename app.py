@@ -7,26 +7,23 @@ import shutil
 import tempfile
 import re
 import time
+import logging
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.WARNING)
 
-# In-memory job tracker
 jobs = {}
 
-# Output folder — lives in the user's home directory
 OUTPUT_DIR = Path.home() / "Karaoke Music"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_ffmpeg_path():
-    # 1. Local ffmpeg/ folder downloaded during setup (most reliable)
     local = Path(__file__).parent / "ffmpeg" / "ffmpeg.exe"
     if local.exists():
         return str(local)
-
-    # 2. imageio-ffmpeg bundled binary
     try:
         import imageio_ffmpeg
         path = imageio_ffmpeg.get_ffmpeg_exe()
@@ -34,15 +31,11 @@ def get_ffmpeg_path():
             return path
     except Exception:
         pass
-
-    # 3. System ffmpeg in PATH
-    system = shutil.which("ffmpeg")
-    if system:
-        return system
-
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
     raise RuntimeError(
-        "FFmpeg was not found. Please run setup.bat again, or follow the "
-        "troubleshooting steps in the README."
+        "FFmpeg not found. Please run setup.bat again to fix this."
     )
 
 
@@ -53,7 +46,6 @@ def sanitize_filename(name: str) -> str:
 
 
 def fake_progress(job_id: str, start: int, end: int, duration: float):
-    """Slowly animate the progress bar so the user sees movement."""
     steps = 20
     step_size = (end - start) / steps
     step_sleep = duration / steps
@@ -68,13 +60,10 @@ def process_video(job_id: str, youtube_url: str):
     temp_dir = None
     try:
         ffmpeg_path = get_ffmpeg_path()
-        ffmpeg_dir = str(Path(ffmpeg_path).parent)
+        ffmpeg_dir  = str(Path(ffmpeg_path).parent)
 
-        # Inject ffmpeg into PATH so demucs can find it too
         env = os.environ.copy()
         env["PATH"] = ffmpeg_dir + os.pathsep + env.get("PATH", "")
-        # Force torchaudio to use soundfile backend — avoids torchcodec DLL issues on Windows
-        env["TORCHAUDIO_USE_BACKEND_DISPATCHER"] = "0"
 
         temp_dir = Path(tempfile.mkdtemp(prefix=f"karaoke_{job_id}_"))
 
@@ -119,44 +108,52 @@ def process_video(job_id: str, youtube_url: str):
         # ── Step 2: Vocal separation ──────────────────────────────────────
         jobs[job_id].update(
             status="separating",
-            message=(
-                "Removing vocals… this usually takes 3–8 minutes. "
-                "Please keep this window open."
-            ),
+            message="Removing vocals… this usually takes 2–5 minutes. Please keep this window open.",
             progress=28,
         )
 
         sep_output = temp_dir / "separated"
         sep_output.mkdir(exist_ok=True)
 
-        # Start fake progress animation (28 → 82 % over 6 minutes)
         anim = threading.Thread(
-            target=fake_progress, args=(job_id, 28, 82, 360), daemon=True
+            target=fake_progress, args=(job_id, 28, 82, 240), daemon=True
         )
         anim.start()
 
-        run_demucs = Path(__file__).parent / "run_demucs.py"
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(run_demucs),
-                "--two-stems",
-                "vocals",
-                "--out",
-                str(sep_output),
-                str(audio_file),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=3600,
-            env=env,
-        )
+        # Temporarily add ffmpeg to PATH so audio-separator can find it
+        original_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + original_path
+        try:
+            from audio_separator.separator import Separator
 
-        if result.returncode != 0:
-            err_snippet = (result.stderr or "")[-400:]
+            separator = Separator(
+                output_dir=str(sep_output),
+                output_format="WAV",
+                log_level=logging.WARNING,
+            )
+            separator.load_model(model_filename="UVR-MDX-NET-Inst_HQ_3.onnx")
+            output_files = separator.separate(str(audio_file))
+        finally:
+            os.environ["PATH"] = original_path
+
+        # Find the instrumental (no-vocals) track
+        instrumental = None
+        for f in output_files:
+            if "instrumental" in str(f).lower():
+                instrumental = Path(str(f))
+                break
+
+        if not instrumental or not instrumental.exists():
+            candidates = (
+                list(sep_output.glob("*(Instrumental)*.wav"))
+                + list(sep_output.glob("*instrumental*.wav"))
+            )
+            if candidates:
+                instrumental = candidates[0]
+
+        if not instrumental or not instrumental.exists():
             raise RuntimeError(
-                f"Vocal removal failed. The AI model may still be downloading — "
-                f"try again in a minute. Details: {err_snippet}"
+                "Vocal removal did not produce an instrumental track. Please try again."
             )
 
         # ── Step 3: Export MP3 ────────────────────────────────────────────
@@ -165,15 +162,6 @@ def process_video(job_id: str, youtube_url: str):
             message="Almost done — saving your karaoke track…",
             progress=85,
         )
-
-        no_vocals_list = list(sep_output.rglob("no_vocals.wav"))
-        if not no_vocals_list:
-            raise RuntimeError(
-                "Vocal removal did not produce the expected output file. "
-                "Please try again."
-            )
-
-        no_vocals_wav = no_vocals_list[0]
 
         safe_title = sanitize_filename(video_title)
         output_filename = f"{safe_title} (Karaoke).mp3"
@@ -188,12 +176,9 @@ def process_video(job_id: str, youtube_url: str):
         conv = subprocess.run(
             [
                 ffmpeg_path,
-                "-i",
-                str(no_vocals_wav),
-                "-codec:a",
-                "libmp3lame",
-                "-q:a",
-                "2",
+                "-i", str(instrumental),
+                "-codec:a", "libmp3lame",
+                "-q:a", "2",
                 "-y",
                 str(output_path),
             ],
@@ -214,15 +199,6 @@ def process_video(job_id: str, youtube_url: str):
             output_dir=str(OUTPUT_DIR),
         )
 
-    except subprocess.TimeoutExpired:
-        jobs[job_id].update(
-            status="error",
-            message=(
-                "Processing took too long. The video might be very long. "
-                "Try a shorter clip and try again."
-            ),
-            progress=0,
-        )
     except RuntimeError as exc:
         jobs[job_id].update(status="error", message=str(exc), progress=0)
     except Exception as exc:
@@ -236,7 +212,7 @@ def process_video(job_id: str, youtube_url: str):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ── Routes ─────────────────────────────────────────────────────────────────
 
 @app.after_request
 def add_cors(response):
@@ -261,20 +237,14 @@ def process():
 
     if not url:
         return jsonify(error="Please enter a YouTube link."), 400
-
     if "youtube.com" not in url and "youtu.be" not in url:
         return jsonify(
-            error="That doesn't look like a YouTube link. "
-                  "Please paste the full URL from YouTube."
+            error="That doesn't look like a YouTube link. Please paste the full URL."
         ), 400
 
     job_id = str(uuid.uuid4())
     jobs[job_id] = dict(status="starting", message="Getting started…", progress=5)
-
-    threading.Thread(
-        target=process_video, args=(job_id, url), daemon=True
-    ).start()
-
+    threading.Thread(target=process_video, args=(job_id, url), daemon=True).start()
     return jsonify(job_id=job_id)
 
 
@@ -321,7 +291,6 @@ def delete_file(filename):
 @app.route("/open-folder")
 def open_folder():
     try:
-        # Windows: open Explorer at the output folder
         subprocess.Popen(["explorer", str(OUTPUT_DIR)])
     except Exception:
         pass

@@ -1,5 +1,5 @@
 flask>=2.3.0
 yt-dlp>=2024.1.0
-demucs>=4.0.1
+audio-separator[onnx]>=0.17.0
 imageio-ffmpeg>=0.4.9
 soundfile>=0.12.0
