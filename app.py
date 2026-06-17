@@ -73,6 +73,8 @@ def process_video(job_id: str, youtube_url: str):
         # Inject ffmpeg into PATH so demucs can find it too
         env = os.environ.copy()
         env["PATH"] = ffmpeg_dir + os.pathsep + env.get("PATH", "")
+        # Force torchaudio to use soundfile backend — avoids torchcodec DLL issues on Windows
+        env["TORCHAUDIO_USE_BACKEND_DISPATCHER"] = "0"
 
         temp_dir = Path(tempfile.mkdtemp(prefix=f"karaoke_{job_id}_"))
 
