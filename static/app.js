@@ -86,7 +86,7 @@ function handleStatus(data) {
   if (data.status === 'complete') {
     stopPolling();
     setBar(100);
-    setTimeout(() => showSuccess(data.filename, data.output_dir), 400);
+    setTimeout(() => { showSuccess(data.filename, data.output_dir); loadLibrary(); }, 400);
   } else if (data.status === 'error') {
     stopPolling();
     showError(data.message || 'Something went wrong. Please try again.');
@@ -138,7 +138,7 @@ function shakeInput() {
   el.focus();
 }
 
-// ── Enter key support ─────────────────────────────────────────────────────
+// ── Enter key support + library init ─────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('url-input');
@@ -148,4 +148,126 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     input.addEventListener('animationend', () => input.classList.remove('shake'));
   }
+  loadLibrary();
 });
+
+// ── Library ───────────────────────────────────────────────────────────────
+
+let currentFilename = null;
+
+function loadLibrary() {
+  const btn = document.querySelector('.btn-refresh');
+  if (btn) btn.classList.add('spinning');
+
+  fetch('/files')
+    .then(r => r.json())
+    .then(data => {
+      renderLibrary(data.files || []);
+    })
+    .catch(() => {})
+    .finally(() => {
+      if (btn) btn.classList.remove('spinning');
+    });
+}
+
+function renderLibrary(files) {
+  const list  = document.getElementById('lib-list');
+  const empty = document.getElementById('lib-empty');
+  if (!list) return;
+
+  list.innerHTML = '';
+
+  if (files.length === 0) {
+    if (empty) empty.hidden = false;
+    return;
+  }
+  if (empty) empty.hidden = true;
+
+  files.forEach(f => {
+    const li = document.createElement('li');
+    li.className = 'lib-item' + (f.filename === currentFilename ? ' playing' : '');
+    li.dataset.filename = f.filename;
+    li.innerHTML = `
+      <button class="lib-play-btn ${f.filename === currentFilename ? 'playing' : 'paused'}"
+              onclick="playTrack('${esc(f.filename)}', '${esc(f.display)}', this)"
+              title="Play"></button>
+      <span class="lib-name" title="${esc(f.display)}">${esc(f.display)}</span>
+      <span class="lib-size">${f.size_mb} MB</span>
+      <button class="lib-del" onclick="deleteTrack('${esc(f.filename)}', event)" title="Delete">&#128465;</button>
+    `;
+    list.appendChild(li);
+  });
+}
+
+function playTrack(filename, displayName, btn) {
+  const player = document.getElementById('audio-player');
+  const wrap   = document.getElementById('player-wrap');
+  const title  = document.getElementById('player-title');
+  if (!player || !wrap || !title) return;
+
+  // If clicking the currently playing track, toggle pause/play
+  if (filename === currentFilename) {
+    if (player.paused) {
+      player.play();
+      btn.classList.replace('paused', 'playing');
+    } else {
+      player.pause();
+      btn.classList.replace('playing', 'paused');
+    }
+    return;
+  }
+
+  // Reset previous playing state
+  document.querySelectorAll('.lib-item.playing').forEach(el => el.classList.remove('playing'));
+  document.querySelectorAll('.lib-play-btn.playing').forEach(el => {
+    el.classList.replace('playing', 'paused');
+  });
+
+  currentFilename = filename;
+  player.src      = '/audio/' + encodeURIComponent(filename);
+  title.textContent = displayName;
+  wrap.hidden       = false;
+
+  // Highlight the row
+  const row = document.querySelector(`.lib-item[data-filename="${CSS.escape(filename)}"]`);
+  if (row) row.classList.add('playing');
+  btn.classList.replace('paused', 'playing');
+
+  player.play().catch(() => {});
+
+  // When track ends, reset the play button
+  player.onended = () => {
+    btn.classList.replace('playing', 'paused');
+    if (row) row.classList.remove('playing');
+    currentFilename = null;
+  };
+}
+
+function deleteTrack(filename, e) {
+  e.stopPropagation();
+  if (!confirm(`Delete "${filename}"?\n\nThis cannot be undone.`)) return;
+
+  // Stop player if this track is playing
+  if (filename === currentFilename) {
+    const player = document.getElementById('audio-player');
+    if (player) { player.pause(); player.src = ''; }
+    const wrap = document.getElementById('player-wrap');
+    if (wrap) wrap.hidden = true;
+    currentFilename = null;
+  }
+
+  fetch('/delete/' + encodeURIComponent(filename), { method: 'DELETE' })
+    .then(r => r.json())
+    .then(() => loadLibrary())
+    .catch(() => alert('Could not delete the file. Please try again.'));
+}
+
+// Escape HTML special chars for use inside attributes / text
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

@@ -90,6 +90,26 @@
 
     </main>
 
+      <!-- LIBRARY -->
+      <section class="card card-library" id="sec-library">
+        <div class="lib-header">
+          <h2>&#127925; My Karaoke Music</h2>
+          <button class="btn-refresh" onclick="loadLibrary()" title="Refresh list">&#8635;</button>
+        </div>
+
+        <div id="lib-empty" class="lib-empty" hidden>
+          <p>No karaoke tracks yet.<br>Make your first one above!</p>
+        </div>
+
+        <ul id="lib-list" class="lib-list"></ul>
+
+        <!-- shared player -->
+        <div id="player-wrap" class="player-wrap" hidden>
+          <div class="player-title" id="player-title"></div>
+          <audio id="audio-player" controls></audio>
+        </div>
+      </section>
+
     <footer>
       <p>Karaoke Maker &bull; Running locally on your computer &bull; Your files never leave your machine</p>
     </footer>

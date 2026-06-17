@@ -8,7 +8,7 @@ import tempfile
 import re
 import time
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
 app = Flask(__name__)
 
@@ -273,6 +273,38 @@ def get_status(job_id):
     if not job:
         return jsonify(status="not_found", message="Job not found."), 404
     return jsonify(job)
+
+
+@app.route("/files")
+def list_files():
+    files = []
+    for f in OUTPUT_DIR.glob("*.mp3"):
+        stat = f.stat()
+        files.append({
+            "filename": f.name,
+            "display": f.stem,
+            "size_mb": round(stat.st_size / (1024 * 1024), 1),
+            "modified": stat.st_mtime,
+        })
+    files.sort(key=lambda x: x["modified"], reverse=True)
+    return jsonify(files=files)
+
+
+@app.route("/audio/<path:filename>")
+def serve_audio(filename):
+    return send_from_directory(OUTPUT_DIR, filename, conditional=True)
+
+
+@app.route("/delete/<path:filename>", methods=["DELETE"])
+def delete_file(filename):
+    try:
+        target = (OUTPUT_DIR / filename).resolve()
+        if target.parent.resolve() != OUTPUT_DIR.resolve():
+            return jsonify(error="Invalid path."), 400
+        target.unlink(missing_ok=True)
+        return jsonify(ok=True)
+    except Exception as exc:
+        return jsonify(error=str(exc)), 500
 
 
 @app.route("/open-folder")
